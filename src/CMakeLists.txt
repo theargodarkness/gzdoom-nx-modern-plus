@@ -837,6 +837,7 @@ set (PCH_SOURCES
 	g_game.cpp
 	g_hub.cpp
 	g_level.cpp
+	g_splitscreen.cpp
 	gameconfigfile.cpp
 	hu_scores.cpp
 	m_cheat.cpp
@@ -1296,10 +1297,10 @@ endif()
 if( NINTENDO_SWITCH )
 	list( REMOVE_ITEM PROJECT_LIBRARIES dl )
 	if( HAVE_VULKAN )
-		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} vulkan expat zstd )
+		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${NX_VULKAN_LIBRARIES} )
 		target_link_options( zdoom PRIVATE "-pthread" "-Wl,--allow-multiple-definition" )
 	endif()
-	set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} SDL2 EGL glapi drm_nouveau nx m stdc++ )
+	set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} SDL2 ${NX_GL_LIBRARIES} nx m stdc++ )
 	link_directories( /opt/devkitpro/portlibs/switch/lib )
 	target_link_libraries( zdoom
 		-Wl,--start-group

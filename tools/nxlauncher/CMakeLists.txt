@@ -11,7 +11,7 @@ if( NINTENDO_SWITCH )
 	add_executable( gzdoom_launcher ${SRC_HDR} ${SRC_FILES} )
 	target_compile_definitions( gzdoom_launcher PRIVATE GIT_DESCRIPTION="${SWITCH_APP_VERSION}" )
 	target_include_directories( gzdoom_launcher PRIVATE /opt/devkitpro/portlibs/switch/include )
-	target_link_libraries( gzdoom_launcher SDL2 EGL glapi drm_nouveau nx m stdc++ )
+	target_link_libraries( gzdoom_launcher -Wl,--start-group SDL2 ${NX_GL_LIBRARIES} nx m stdc++ -Wl,--end-group )
 	add_custom_command( TARGET gzdoom_launcher POST_BUILD
 		COMMAND nacptool --create "${APP_NAME}" "${APP_AUTHOR}" "${APP_VERSION}" "gzdoom_launcher.nacp"
 		COMMAND aarch64-none-elf-strip -o gzdoom_launcher_stripped $<TARGET_FILE:gzdoom_launcher>

@@ -51,6 +51,27 @@ if( NINTENDO_SWITCH )
 	set( CMAKE_CXX_EXTENSIONS ON )
 	set( CMAKE_C_STANDARD 17 )
 	set( SWITCH_APP_VERSION "4.14.2-Vulkan" )
+
+	# The graphics libraries differ between devkitPro's own Mesa (EGL + glapi + drm_nouveau)
+	# and the newer Mesa ports that add Vulkan, so ask pkg-config and only fall back to
+	# the classic list when it has no answer.
+	find_package( PkgConfig QUIET )
+	if( PKG_CONFIG_FOUND )
+		pkg_check_modules( NX_EGL QUIET egl )
+		pkg_check_modules( NX_VULKAN QUIET vulkan )
+	endif()
+	if( NX_EGL_FOUND AND NX_EGL_STATIC_LIBRARIES )
+		set( NX_GL_LIBRARIES ${NX_EGL_STATIC_LIBRARIES} )
+	else()
+		set( NX_GL_LIBRARIES EGL glapi drm_nouveau )
+	endif()
+	if( NX_VULKAN_FOUND AND NX_VULKAN_STATIC_LIBRARIES )
+		set( NX_VULKAN_LIBRARIES ${NX_VULKAN_STATIC_LIBRARIES} )
+	else()
+		set( NX_VULKAN_LIBRARIES vulkan expat zstd )
+	endif()
+	message( STATUS "Switch GL libraries: ${NX_GL_LIBRARIES}" )
+	message( STATUS "Switch Vulkan libraries: ${NX_VULKAN_LIBRARIES}" )
 endif()
 
 
