@@ -38,12 +38,12 @@ each with their own view, weapon, status bar or HUD, automap and player colour.
   | Stick up/down | | Walk forward/back |
   | Stick left/right | | Turn |
   | SR | JC_SR | Fire |
-  | SL (hold) | JC_SL | Strafe: the stick sidesteps instead of turning |
+  | SL | JC_SL | Alt fire |
   | Right face button | JC_Right | Use / open |
   | Bottom face button | JC_Down | Next weapon |
   | Left face button | JC_Left | Previous weapon |
   | Top face button | JC_Up | Automap |
-  | Press the stick | JC_Stick | Alt fire |
+  | Press the stick (hold) | JC_Stick | Strafe: the stick sidesteps instead of turning |
   | + or − | JC_Menu | Menu |
 
   In menus the stick moves, the right button selects and the bottom button

@@ -93,7 +93,7 @@ GZDoom-NX-Modern includes upgraded MIDI synthesizers (**FluidSynth** and **Timid
 
 Local co-op on one console: **Main menu → Split-Screen Co-op** (also under Options), pick the number
 of players and **Start new game**. Each controller is one player; a single Joy-Con held sideways works
-too (SR fires, hold SL to strafe, top button shows the map). It works with any IWAD, map pack or mod,
+too (SR fires, SL is alt fire, hold the stick pressed in to strafe, top button shows the map). It works with any IWAD, map pack or mod,
 and saves restore the split game. Details: [docs/SPLITSCREEN.md](docs/SPLITSCREEN.md).
 
 ---

@@ -745,6 +745,17 @@ void ReadBindings(int lump, bool override)
 
 void C_SetDefaultJoyConKeys()
 {
+	// The first defaults had strafe on SL and alt fire on the stick button. A config that
+	// still has exactly those two gets the current defaults, which are the other way round.
+	// (KEY_JOY5 is JC_SL, KEY_JOY7 is JC_Stick.)
+	if (Bindings.GetBinding(KEY_JOY5).CompareNoCase("+strafe") == 0 &&
+		Bindings.GetBinding(KEY_JOY7).CompareNoCase("+altattack") == 0)
+	{
+		Bindings.SetBind(KEY_JOY5, "+altattack");
+		Bindings.SetBind(KEY_JOY7, "+strafe");
+		return;
+	}
+
 	for (int key = KEY_JOY1; key <= KEY_JOY8; key++)
 	{
 		if (Bindings.GetBinding(key).IsNotEmpty()) return;

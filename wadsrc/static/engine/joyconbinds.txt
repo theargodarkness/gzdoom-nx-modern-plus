@@ -1,12 +1,12 @@
 // Nintendo Switch: a single Joy-Con held sideways (split-screen co-op).
 // Buttons are named by where they are when the Joy-Con is held sideways.
-// The stick walks (up/down) and turns (left/right); hold JC_SL to strafe instead of turning.
+// The stick walks (up/down) and turns (left/right); hold the stick pressed in (JC_Stick) to strafe instead of turning.
 
 jc_sr +attack
-jc_sl +strafe
+jc_sl +altattack
 jc_right +use
 jc_down weapnext
 jc_left weapprev
 jc_up togglemap
-jc_stick +altattack
+jc_stick +strafe
 jc_menu menu_main
