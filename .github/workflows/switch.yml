@@ -1,0 +1,54 @@
+name: Switch build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: switch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # devkitPro's own packages: OpenGL / GLES renderers.
+          - name: gzdoom-switch-opengl
+            image: devkitpro/devkita64:latest
+            vulkan: 'OFF'
+          # Mesa 26 with the NVK Vulkan driver for Horizon.
+          - name: gzdoom-switch-vulkan
+            image: ghcr.io/autorunhq/switch-dev:latest
+            vulkan: 'ON'
+    steps:
+      - name: Install host build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential cmake git curl xz-utils ca-certificates libbz2-dev zlib1g-dev pkg-config
+
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          cmake --version | head -n 1
+          gcc --version | head -n 1
+          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc --version | head -n 1
+          ls /opt/devkitpro/portlibs/switch/lib | tr '\n' ' '
+
+      - name: Build
+        env:
+          HAVE_VULKAN: ${{ matrix.vulkan }}
+        run: bash nx/build-switch.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: build-switch/dist
+          if-no-files-found: error
