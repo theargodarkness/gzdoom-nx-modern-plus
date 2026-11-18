@@ -23,12 +23,11 @@ jobs:
           - name: gzdoom-switch-opengl
             image: devkitpro/devkita64:latest
             vulkan: 'OFF'
-          # A Vulkan variant is prepared but switched off: it does not link yet.
-          # To pick it up again, run the "Switch Vulkan driver (NVK)" workflow by hand
-          # and add back:
-          #   - name: gzdoom-switch-vulkan
-          #     image: devkitpro/devkita64:latest
-          #     vulkan: 'ON'
+          # Vulkan renderer, linked against the NVK driver that the
+          # "Switch Vulkan driver (NVK)" workflow builds and caches.
+          - name: gzdoom-switch-vulkan
+            image: devkitpro/devkita64:latest
+            vulkan: 'ON'
     steps:
       - name: Install host build tools
         run: |
