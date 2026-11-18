@@ -32,7 +32,7 @@ jobs:
       - name: Install host build tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends build-essential cmake git curl xz-utils ca-certificates libbz2-dev zlib1g-dev pkg-config
+          apt-get install -y --no-install-recommends build-essential cmake git curl xz-utils zstd ca-certificates libbz2-dev zlib1g-dev pkg-config
 
       - uses: actions/checkout@v4
 
