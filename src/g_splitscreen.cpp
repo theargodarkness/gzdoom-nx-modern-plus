@@ -679,6 +679,12 @@ void SS_MarkStatusBars()
 {
 	for (auto &bar : ss_bars) GC::Mark(bar);
 	GC::Mark(ss_mainbar);
+	// Items the other local players are about to use or drop, while their input is swapped out.
+	for (auto &in : ss_input)
+	{
+		GC::Mark(const_cast<AActor *&>(in.SendItemUse));
+		GC::Mark(const_cast<AActor *&>(in.SendItemDrop));
+	}
 }
 
 //-----------------------------------------------------------------------------

@@ -20,13 +20,11 @@ jobs:
       matrix:
         include:
           # devkitPro's own packages: OpenGL / GLES renderers.
+          # The Vulkan renderer needs the Mesa NVK driver library for Horizon in portlibs,
+          # which devkitPro does not package; build it with HAVE_VULKAN=ON where that exists.
           - name: gzdoom-switch-opengl
             image: devkitpro/devkita64:latest
             vulkan: 'OFF'
-          # Mesa 26 with the NVK Vulkan driver for Horizon.
-          - name: gzdoom-switch-vulkan
-            image: ghcr.io/autorunhq/switch-dev:latest
-            vulkan: 'ON'
     steps:
       - name: Install host build tools
         run: |
@@ -40,10 +38,6 @@ jobs:
           cmake --version | head -n 1
           gcc --version | head -n 1
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc --version | head -n 1
-          ls /opt/devkitpro/portlibs/switch/lib/pkgconfig | tr '\n' ' '
-          for m in egl glesv2 gl vulkan sdl2; do
-            echo "$m: $(/opt/devkitpro/portlibs/switch/bin/aarch64-none-elf-pkg-config --static --libs $m 2>&1)"
-          done
 
       - name: Build
         env:

@@ -89,34 +89,40 @@ GZDoom-NX-Modern includes upgraded MIDI synthesizers (**FluidSynth** and **Timid
 
 ---
 
+## 👥 Split-Screen Co-op (2–4 players)
+
+Local co-op on one console: **Main menu → Split-Screen Co-op** (also under Options), pick the number
+of players and **Start new game**. Each controller is one player; a single Joy-Con held sideways works
+too (SR fires, hold SL to strafe, top button shows the map). It works with any IWAD, map pack or mod,
+and saves restore the split game. Details: [docs/SPLITSCREEN.md](docs/SPLITSCREEN.md).
+
+---
+
 ## 🛠️ Building from Source
 
-The build uses the official `devkitpro/devkita64` Docker container.
+### On GitHub (nothing to install)
 
-### Prerequisites
-- Docker
+Every push runs the **Switch build** workflow (`.github/workflows/switch.yml`). Open the run on the
+repository's **Actions** tab and download the `gzdoom-switch-opengl` artifact: it contains a `switch`
+folder to copy to the root of the SD card.
 
-### Compilation Steps
+### Locally with Docker
+
 ```bash
-# 1. Clone repository
-git clone --recursive https://github.com/Thorhax/GZDoom-NX-Modern.git
-cd GZDoom-NX-Modern
-
-# 2. Build using devkitA64 Docker container
-docker run --rm \
-  -v $(pwd):/gzdoom \
-  -w /gzdoom/build \
-  devkitpro/devkita64:latest \
-  bash -c "
-    export PATH=/opt/devkitpro/devkitA64/bin:/opt/devkitpro/tools/bin:\$PATH
-    cmake -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
-          -DNINTENDO_SWITCH=ON \
-          -DCMAKE_BUILD_TYPE=Release ..
-    cmake --build . -j\$(nproc)
-  "
+git clone https://github.com/theargodarkness/gzdoom-nx-modern-plus.git
+cd gzdoom-nx-modern-plus
+docker run --rm -v "$PWD":/gzdoom -w /gzdoom devkitpro/devkita64:latest \
+  bash -c "apt-get update && apt-get install -y build-essential cmake git curl xz-utils libbz2-dev zlib1g-dev pkg-config && bash nx/build-switch.sh"
 ```
 
-The output `gzdoom.nro`, `gzdoom.pk3`, and launcher will be created in `build/`.
+`nx/build-switch.sh` builds the host tools, libsndfile and ZMusic, then GZDoom and the launcher, and
+leaves an SD-card-ready folder in `build-switch/dist`.
+
+- **Renderers:** devkitPro's packages provide OpenGL / GLES only, so that is what this builds. The
+  Vulkan renderer needs the Mesa NVK driver library for Horizon (`libvulkan.a`) in portlibs; with that
+  installed, run the script with `HAVE_VULKAN=ON`.
+- **MIDI:** ZMusic is built without FluidSynth (it needs glib, which the Switch toolchain lacks).
+  Timidity++ and the other built-in synths, including `.sf2` soundfonts through Timidity++, work.
 
 ---
 

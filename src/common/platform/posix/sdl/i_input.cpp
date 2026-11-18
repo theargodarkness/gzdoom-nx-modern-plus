@@ -176,7 +176,7 @@ static inline int JoystickMapButton(int sdlbtn)
 	};
 	return (sdlbtn >= 0 && sdlbtn < 16) ? btnmap[sdlbtn] : 0;
 #else
-	return sdlbtn; // identity map
+	return KEY_FIRSTJOYBUTTON + sdlbtn;	// Joy1, Joy2, ... (a bare button number would be read as a keyboard key)
 #endif
 }
 
