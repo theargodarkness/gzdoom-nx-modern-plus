@@ -66,7 +66,9 @@ meson setup builddir-native \
 	-Dtools=[] -Dllvm=enabled -Dmesa-clc=enabled -Dmesa-clc-bundle-headers=enabled \
 	-Dprecomp-compiler=enabled -Dinstall-mesa-clc=true
 ninja -C builddir-native src/compiler/clc/mesa_clc src/compiler/spirv/vtn_bindgen2
-export PATH="/usr/local/libexec:$MESA/builddir-native/src/compiler/clc:$MESA/builddir-native/src/compiler/spirv:$PATH"
+# Not /usr/local/libexec: the cross file names the wrapped rustc by full path, and the
+# plain rustc on PATH has to stay the native one (it builds the proc-macro crates).
+export PATH="$MESA/builddir-native/src/compiler/clc:$MESA/builddir-native/src/compiler/spirv:$PATH"
 unset PKG_CONFIG_PATH CMAKE_PREFIX_PATH
 
 step "Configure NVK for the Switch"
