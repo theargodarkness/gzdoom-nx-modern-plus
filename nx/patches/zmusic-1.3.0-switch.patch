@@ -1,0 +1,93 @@
+diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
+index 213a68b..5370a0b 100644
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -12,7 +12,7 @@ INTERFACE
+ 	mididevices/music_opl_mididevice.cpp
+ 	mididevices/music_opnmidi_mididevice.cpp
+ 	mididevices/music_timiditypp_mididevice.cpp
+-	mididevices/music_fluidsynth_mididevice.cpp
++	$<$<NOT:$<BOOL:${ZMUSIC_NO_FLUIDSYNTH}>>:mididevices/music_fluidsynth_mididevice.cpp>
+ 	mididevices/music_softsynth_mididevice.cpp
+ 	mididevices/music_timidity_mididevice.cpp
+ 	mididevices/music_wildmidi_mididevice.cpp
+@@ -153,8 +153,14 @@ use_fast_math(zmusiclite)
+ target_include_directories(zmusic INTERFACE $<INSTALL_INTERFACE:include> $<BUILD_INTERFACE:${ZMusic_SOURCE_DIR}/include>)
+ target_include_directories(zmusiclite INTERFACE $<INSTALL_INTERFACE:include> $<BUILD_INTERFACE:${ZMusic_SOURCE_DIR}/include>)
+ 
+-target_link_libraries_hidden(zmusic zmusic-obj adl oplsynth opn timidity timidityplus wildmidi fluidsynth)
+-target_link_libraries_hidden(zmusiclite zmusic-obj fluidsynth)
++if(ZMUSIC_NO_FLUIDSYNTH)
++	target_compile_definitions(zmusic-obj INTERFACE ZMUSIC_NO_FLUIDSYNTH)
++	target_link_libraries_hidden(zmusic zmusic-obj adl oplsynth opn timidity timidityplus wildmidi)
++	target_link_libraries_hidden(zmusiclite zmusic-obj)
++else()
++	target_link_libraries_hidden(zmusic zmusic-obj adl oplsynth opn timidity timidityplus wildmidi fluidsynth)
++	target_link_libraries_hidden(zmusiclite zmusic-obj fluidsynth)
++endif()
+ 
+ target_compile_definitions(zmusic PUBLIC $<$<STREQUAL:$<TARGET_PROPERTY:zmusic,TYPE>,STATIC_LIBRARY>:ZMUSIC_STATIC>)
+ target_compile_definitions(zmusiclite PRIVATE ZMUSIC_LITE=1 PUBLIC $<$<STREQUAL:$<TARGET_PROPERTY:zmusiclite,TYPE>,STATIC_LIBRARY>:ZMUSIC_STATIC>)
+diff --git a/source/loader/i_module.cpp b/source/loader/i_module.cpp
+index 59742ef..a6c912a 100644
+--- a/source/loader/i_module.cpp
++++ b/source/loader/i_module.cpp
+@@ -36,8 +36,14 @@
+ #ifdef _WIN32
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
+-#else
++#elif !defined(__SWITCH__)
+ #include <dlfcn.h>
++#else
++// No dynamic loader on the Switch; everything is linked statically.
++#define RTLD_LAZY 0
++#define dlopen(x, y) (nullptr)
++#define dlsym(x, y) (nullptr)
++#define dlclose(x)
+ #endif
+ 
+ 
+diff --git a/source/musicformats/music_midi.cpp b/source/musicformats/music_midi.cpp
+index 2d5cd28..c7252ef 100644
+--- a/source/musicformats/music_midi.cpp
++++ b/source/musicformats/music_midi.cpp
+@@ -50,6 +50,11 @@
+ #endif
+ #endif
+ 
++#ifdef ZMUSIC_NO_FLUIDSYNTH
++// Normally defined by the FluidSynth device; the settings code still refers to it.
++FluidConfig fluidConfig;
++#endif
++
+ // MACROS ------------------------------------------------------------------
+ 
+ enum
+@@ -290,8 +295,12 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
+ 				// Intentional fall-through for systems without standard midi support
+ 
+ 			case MDEV_FLUIDSYNTH:
++#ifndef ZMUSIC_NO_FLUIDSYNTH
+ 				dev = CreateFluidSynthMIDIDevice(samplerate, Args.c_str());
+ 				break;
++#else
++				throw std::runtime_error("FluidSynth is not available in this build");
++#endif
+ 
+ 			case MDEV_OPL:
+ 				dev = CreateOplMIDIDevice(Args.c_str());
+diff --git a/thirdparty/CMakeLists.txt b/thirdparty/CMakeLists.txt
+index dd791db..aef7b77 100644
+--- a/thirdparty/CMakeLists.txt
++++ b/thirdparty/CMakeLists.txt
+@@ -28,4 +28,8 @@ add_subdirectory(timidityplus)
+ add_subdirectory(wildmidi)
+ add_subdirectory(oplsynth)
+ add_subdirectory(libxmp)
+-add_subdirectory(fluidsynth/src)
++# The bundled FluidSynth needs glib, which the Nintendo Switch does not have.
++option(ZMUSIC_NO_FLUIDSYNTH "Build without the FluidSynth MIDI device" OFF)
++if(NOT ZMUSIC_NO_FLUIDSYNTH)
++	add_subdirectory(fluidsynth/src)
++endif()

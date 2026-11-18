@@ -57,12 +57,14 @@ step "3/5 ZMusic $ZMUSIC_VERSION"
 if [ ! -f "$PORTLIBS/lib/libzmusic.a" ]; then
 	if [ ! -d "$DEPS_DIR/ZMusic" ]; then
 		git clone --depth 1 --branch "$ZMUSIC_VERSION" https://github.com/ZDoom/ZMusic.git "$DEPS_DIR/ZMusic"
+		# No glib (so no bundled FluidSynth) and no dynamic loader on the Switch.
+		git -C "$DEPS_DIR/ZMusic" apply "$ROOT/nx/patches/zmusic-$ZMUSIC_VERSION-switch.patch"
 	fi
 	cmake -S "$DEPS_DIR/ZMusic" -B "$DEPS_DIR/zmusic-build" $POLICY \
 		-DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX="$PORTLIBS" \
-		-DBUILD_SHARED_LIBS=OFF -DNO_RTLD=ON \
-		-DDYN_SNDFILE=OFF -DDYN_MPG123=OFF -DDYN_FLUIDSYNTH=OFF
+		-DBUILD_SHARED_LIBS=OFF -DZMUSIC_NO_FLUIDSYNTH=ON \
+		-DDYN_SNDFILE=OFF -DDYN_MPG123=OFF
 	cmake --build "$DEPS_DIR/zmusic-build" -j"$JOBS"
 	cmake --install "$DEPS_DIR/zmusic-build"
 else
