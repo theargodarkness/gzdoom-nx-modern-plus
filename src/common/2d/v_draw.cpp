@@ -135,10 +135,13 @@ int AspectMultiplier(float aspect)
 		return (int)round(200.0f / (AspectBaseHeight(aspect) / 3.0f) * 48.0f);
 }
 
+int UIScaleOverride = 0;	// [split-screen] forces a HUD scale for the small split views
+
 int GetUIScale(F2DDrawer *drawer, int altval)
 {
 	int scaleval;
-	if (altval > 0) scaleval = altval;
+	if (UIScaleOverride > 0) scaleval = UIScaleOverride;
+	else if (altval > 0) scaleval = altval;
 	else if (uiscale == 0)
 	{
 		// Default should try to scale to 640x400

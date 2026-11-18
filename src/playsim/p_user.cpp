@@ -80,6 +80,7 @@
 #include "serializer_doom.h"
 #include "serialize_obj.h"
 #include "d_player.h"
+#include "g_splitscreen.h"
 #include "r_utility.h"
 #include "p_blockmap.h"
 #include "a_morph.h"
@@ -662,6 +663,9 @@ static int GetSoftPitch(bool down)
 
 void player_t::SendPitchLimits() const
 {
+	// [split-screen] every local player needs to send its limits, through its own command stream
+	int slot = SS_SlotForPlayer(int(this - players));
+	FSplitSlotScope scope(slot >= 0 ? slot : SS_ActiveSlot);
 	if (this - players == consoleplayer)
 	{
 		int uppitch, downpitch;

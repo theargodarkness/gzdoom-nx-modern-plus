@@ -26,6 +26,7 @@
 #include "doomdef.h"
 #include "m_swap.h"
 #include "hu_stuff.h"
+#include "g_splitscreen.h"
 #include "s_sound.h"
 #include "g_game.h"
 #include "st_stuff.h"
@@ -235,7 +236,8 @@ void CT_Drawer (void)
 	auto drawer = twod;
 	FFont *displayfont = NewConsoleFont;
 
-	if (players[consoleplayer].camera != NULL &&
+	if (!SS_Active() &&		// [split-screen] each player's scoreboard is drawn in its own view
+		players[consoleplayer].camera != NULL &&
 		(buttonMap.ButtonDown(Button_ShowScores) ||
 		 players[consoleplayer].camera->health <= 0 ||
 		 SB_ForceActive))

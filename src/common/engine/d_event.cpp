@@ -47,6 +47,9 @@
 int eventhead;
 int eventtail;
 event_t events[MAXEVENTS];
+static int8_t eventsources[MAXEVENTS];	// [split-screen] device that posted each event
+int D_PostEventSource = -1;
+int D_EventSource = -1;
 
 CVAR(Float, m_sensitivity_x, 2.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float, m_sensitivity_y, 2.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -68,16 +71,19 @@ void D_ProcessEvents (void)
 {
 	FixedBitArray<NUM_KEYS> keywasdown;
 	TArray<event_t*> delayedevents;
+	TArray<int> delayedsources;	// [split-screen]
 
 	keywasdown.Zero();
 	while (eventtail != eventhead)
 	{
 		event_t *ev = &events[eventtail];
+		D_EventSource = eventsources[eventtail];
 		eventtail = (eventtail + 1) & (MAXEVENTS - 1);
 
 		if (ev->type == EV_KeyUp && keywasdown[ev->data1])
 		{
 			delayedevents.Push(ev);
+			delayedsources.Push(D_EventSource);
 			continue;
 		}
 
@@ -101,9 +107,15 @@ void D_ProcessEvents (void)
 		if (sysCallbacks.G_Responder(ev) && ev->type == EV_KeyDown) keywasdown.Set(ev->data1);
 	}
 
-	for (auto ev: delayedevents)
+	D_EventSource = -1;
+
+	for (unsigned i = 0; i < delayedevents.Size(); i++)
 	{
-		D_PostEvent(ev);
+		// [split-screen] the event keeps the device it came from
+		int oldsource = D_PostEventSource;
+		D_PostEventSource = delayedsources[i];
+		D_PostEvent(delayedevents[i]);
+		D_PostEventSource = oldsource;
 	}
 }
 
@@ -162,6 +174,7 @@ void D_PostEvent(event_t* ev)
 		return;
 
 	events[eventhead] = *ev;
+	eventsources[eventhead] = (int8_t)D_PostEventSource;
 	eventhead = (eventhead + 1) & (MAXEVENTS - 1);
 }
 

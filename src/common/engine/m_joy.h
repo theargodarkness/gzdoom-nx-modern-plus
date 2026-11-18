@@ -65,6 +65,11 @@ double Joy_RemoveDeadZone(double axisval, double deadzone, uint8_t *buttons);
 
 // These ought to be provided by a system-specific i_input.cpp.
 void I_GetAxes(float axes[NUM_JOYAXIS]);
+
+// [split-screen] When set, I_GetAxes only sums the axes of the game controllers
+// this returns true for (the controllers of the player whose input is being built).
+// 'device' is the same index that is used for D_PostEventSource.
+extern bool (*Joy_AcceptDevice)(int device);
 void I_GetJoysticks(TArray<IJoystickConfig *> &sticks);
 IJoystickConfig *I_UpdateDeviceList();
 extern void UpdateJoystickMenu(IJoystickConfig *);

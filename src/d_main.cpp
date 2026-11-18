@@ -69,6 +69,7 @@
 #include "r_utility.h"
 #include "r_sky.h"
 #include "d_main.h"
+#include "g_splitscreen.h"
 #include "d_dehacked.h"
 #include "cmdlib.h"
 #include "v_text.h"
@@ -1006,7 +1007,12 @@ void D_Display ()
 	R_UpdateSky(screen->FrameTime);
 	screen->BeginFrame();
 	twod->ClearClipRect();
-	if ((gamestate == GS_LEVEL || gamestate == GS_TITLELEVEL) && gametic != 0)
+	if (gamestate == GS_LEVEL && gametic != 0 && SS_Active())
+	{
+		// [split-screen] renders all local players' views and HUDs
+		SS_Display();
+	}
+	else if ((gamestate == GS_LEVEL || gamestate == GS_TITLELEVEL) && gametic != 0)
 	{
 		// [ZZ] execute event hook that we just started the frame
 		//E_RenderFrame();
@@ -1576,6 +1582,7 @@ void D_DoAdvanceDemo (void)
 
 void D_StartTitle (void)
 {
+	SS_Shutdown();	// [split-screen] the local players leave with the end of the game
 	playedtitlemusic = false;
 	gameaction = ga_nothing;
 	demosequence = -1;
@@ -2749,7 +2756,7 @@ static void System_PlayStartupSound(const char* sndname)
 
 static bool System_IsSpecialUI()
 {
-	return (generic_ui || !!log_vgafont || !!dlg_vgafont || ConsoleState != c_up || multiplayer ||
+	return (generic_ui || !!log_vgafont || !!dlg_vgafont || ConsoleState != c_up || (multiplayer && !SS_Active()) ||
 		(menuactive == MENU_On && CurrentMenu && !CurrentMenu->IsKindOf("ConversationMenu")));
 
 }
@@ -2774,6 +2781,10 @@ static void System_OnScreenSizeChanged()
 IntRect System_GetSceneRect()
 {
 	IntRect mSceneViewport;
+	if (SS_GetSceneRect(mSceneViewport))
+	{
+		return mSceneViewport;	// [split-screen] the part of the screen of the view being rendered
+	}
 	// Special handling so the view with a visible status bar displays properly
 	int height, width;
 	if (screenblocks >= 10)
@@ -3485,6 +3496,15 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 			autostart = true;
 		}
 
+		// [split-screen] -splitscreen <2-4> starts a local co-op game right away
+		int splitplayers = 0;
+		v = Args->CheckValue ("-splitscreen");
+		if (v && !netgame && !demorecording)
+		{
+			splitplayers = atoi (v);
+			if (splitplayers > 1) autostart = true;
+		}
+
 		S_Sound (CHAN_BODY, 0, "misc/startupdone", 1, ATTN_NONE);
 
 		if (Args->CheckParm("-norun") || batchrun)
@@ -3553,6 +3573,8 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 						CheckWarpTransMap(startmap, true);
 						if (demorecording)
 							G_BeginRecording(startmap.GetChars());
+						if (splitplayers > 1)
+							SS_SetupGame(splitplayers);
 						G_InitNew(startmap.GetChars(), false);
 						if (StoredWarp.IsNotEmpty())
 						{
@@ -3632,7 +3654,7 @@ static int D_DoomMain_Internal (void)
 		System_GetPlayerName,
 		System_DispatchEvent,
 		StrTable_ValidFilter,
-		nullptr,
+		SS_MenuClosed,	// [split-screen]
 		CheckSkipGameOptionBlock,
 		System_ConsoleToggled,
 		nullptr, 

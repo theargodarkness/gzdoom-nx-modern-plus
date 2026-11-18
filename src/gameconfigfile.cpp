@@ -749,6 +749,10 @@ void FGameConfigFile::DoKeySetup(const char *gamename)
 			}
 		}
 	}
+#ifdef __SWITCH__
+	// [split-screen] configs from before single Joy-Con buttons existed get their defaults
+	C_SetDefaultJoyConKeys();
+#endif
 	OkayToWrite = true;
 }
 

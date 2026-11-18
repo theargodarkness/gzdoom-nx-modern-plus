@@ -34,6 +34,7 @@
 #include "hw_portal.h"
 #include "hw_renderstate.h"
 #include "hw_drawinfo.h"
+#include "g_splitscreen.h"
 #include "po_man.h"
 #include "models.h"
 #include "hw_clock.h"
@@ -954,6 +955,13 @@ void HWDrawInfo::DrawEndScene2D(sector_t * viewsector, FRenderState &state)
 	state.EnableDepthTest(false);
 	state.EnableMultisampling(false);
 
+	if (SS_InSplitView())
+	{
+		// [split-screen] keep the weapon inside this player's view
+		const auto &bounds = screen->mSceneViewport;
+		state.SetScissor(bounds.left, bounds.top, bounds.width, bounds.height);
+	}
+
 	DrawPlayerSprites(false, state);
 
 	state.SetNoSoftLightLevel();
@@ -973,13 +981,22 @@ void HWDrawInfo::DrawEndScene2D(sector_t * viewsector, FRenderState &state)
 
 void HWDrawInfo::Set3DViewport(FRenderState &state)
 {
-	// Always clear all buffers with scissor test disabled.
-	// This is faster on newer hardware because it allows the GPU to skip
-	// reading from slower memory where the full buffers are stored.
-	state.SetScissor(0, 0, -1, -1);
-	state.Clear(CT_Color | CT_Depth | CT_Stencil);
-
 	const auto &bounds = screen->mSceneViewport;
+	if (SS_InSplitView())
+	{
+		// [split-screen] Only clear this player's part of the screen, the other views are already in the buffer.
+		state.SetScissor(bounds.left, bounds.top, bounds.width, bounds.height);
+		state.Clear(CT_Color | CT_Depth | CT_Stencil);
+	}
+	else
+	{
+		// Always clear all buffers with scissor test disabled.
+		// This is faster on newer hardware because it allows the GPU to skip
+		// reading from slower memory where the full buffers are stored.
+		state.SetScissor(0, 0, -1, -1);
+		state.Clear(CT_Color | CT_Depth | CT_Stencil);
+	}
+
 	state.SetViewport(bounds.left, bounds.top, bounds.width, bounds.height);
 	state.SetScissor(bounds.left, bounds.top, bounds.width, bounds.height);
 	state.EnableMultisampling(true);

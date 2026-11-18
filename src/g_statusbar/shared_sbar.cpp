@@ -37,6 +37,7 @@
 
 
 #include "sbar.h"
+#include "g_splitscreen.h"
 #include "c_cvars.h"
 #include "c_dispatch.h"
 #include "c_console.h"
@@ -300,15 +301,9 @@ static void CreateGameInfoStatusBar(bool &shouldWarn)
 	}
 }
 
-void ST_CreateStatusBar(bool bTitleLevel)
+// Creates a status bar object for the given player and stores it in the global StatusBar.
+static void ST_CreateStatusBarObject(bool bTitleLevel, int playernum)
 {
-	if (StatusBar != NULL)
-	{
-		StatusBar->Destroy();
-		StatusBar = NULL;
-	}
-	GC::AddMarkerFunc([]() { GC::Mark(StatusBar); });
-
 	bool shouldWarn = true;
 
 	if (bTitleLevel)
@@ -376,8 +371,40 @@ void ST_CreateStatusBar(bool bTitleLevel)
 	}
 
 	GC::WriteBarrier(StatusBar);
-	StatusBar->AttachToPlayer(&players[consoleplayer]);
+	StatusBar->AttachToPlayer(&players[playernum]);
 	StatusBar->NewGame();
+}
+
+void ST_CreateStatusBar(bool bTitleLevel)
+{
+	SS_DestroyStatusBars();	// [split-screen]
+	if (StatusBar != NULL)
+	{
+		StatusBar->Destroy();
+		StatusBar = NULL;
+	}
+	GC::AddMarkerFunc([]() { GC::Mark(StatusBar); });
+
+	ST_CreateStatusBarObject(bTitleLevel, consoleplayer);
+	SS_CreateStatusBars(bTitleLevel);	// [split-screen] one more for each extra local player
+}
+
+//---------------------------------------------------------------------------
+//
+// [split-screen] Creates a separate status bar for another local player.
+// It is of the same kind as the main one but keeps its own state
+// (mug shot, inventory bar, messages, ...).
+//
+//---------------------------------------------------------------------------
+
+DBaseStatusBar *ST_CreateExtraStatusBar(int playernum)
+{
+	auto saved = StatusBar;
+	StatusBar = nullptr;
+	ST_CreateStatusBarObject(false, playernum);
+	auto bar = StatusBar;
+	StatusBar = saved;
+	return bar;
 }
 //---------------------------------------------------------------------------
 //

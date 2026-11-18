@@ -30,6 +30,12 @@ struct event_t
 
 // Called by IO functions when input is detected.
 void D_PostEvent (event_t* ev);
+
+// [split-screen] Input device that produced the events being posted / processed.
+// -1 is the keyboard, mouse and anything else that is not a game controller,
+// values >= 0 are game controller indices as returned by the joystick backend.
+extern int D_PostEventSource;	// set by the input backend around D_PostEvent
+extern int D_EventSource;		// valid while D_ProcessEvents dispatches an event
 void D_RemoveNextCharEvent();
 void D_ProcessEvents(void);
 void PostMouseMove(int x, int y);

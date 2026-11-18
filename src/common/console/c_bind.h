@@ -93,6 +93,9 @@ bool C_DoKey (event_t *ev, FKeyBindings *binds, FKeyBindings *doublebinds);
 
 // Stuff used by the customize controls menu
 void C_SetDefaultBindings ();
+#ifdef __SWITCH__
+void C_SetDefaultJoyConKeys ();	// [split-screen] single Joy-Con defaults, if none are bound
+#endif
 void C_UnbindAll ();
 
 extern const char *KeyNames[];

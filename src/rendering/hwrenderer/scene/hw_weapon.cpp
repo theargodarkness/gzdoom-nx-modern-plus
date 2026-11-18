@@ -32,6 +32,7 @@
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "models.h"
+#include "g_splitscreen.h"
 #include "hw_weapon.h"
 #include "hw_fakeflat.h"
 #include "texturemanager.h"
@@ -514,6 +515,11 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 
 	// calculate edges of the shape
 	scalex = psp->baseScale.X * (320.0f / (240.0f * r_viewwindow.WidescreenRatio)) * (vw / 320);
+	if (SS_InSplitView())
+	{
+		// [split-screen] A split view's aspect ratio usually differs from the screen's, so scale by its height.
+		scalex = psp->baseScale.X * vh / 240.f;
+	}
 
 	float x1, y1, x2, y2, u1, v1, u2, v2;
 
@@ -537,6 +543,7 @@ bool HUDSprite::GetWeaponRect(HWDrawInfo *di, DPSprite *psp, float sx, float sy,
 	// handled here by multiplying SCREENWIDTH by 200 instead of
 	// 240, but now the baseScale var defines this from now on.
 	scale = psp->baseScale.Y * (SCREENHEIGHT*vw) / (SCREENWIDTH * 240.0f);
+	if (SS_InSplitView()) scale = psp->baseScale.Y * vh / 240.f;	// [split-screen]
 	y1 = viewwindowy + vh / 2 - (ftexturemid * scale);
 	y2 = y1 + (r.height * scale) + 1;
 

@@ -63,6 +63,7 @@
 #include "m_random.h"
 #include "doomdef.h"
 #include "p_local.h"
+#include "g_splitscreen.h"
 #include "p_maputl.h"
 #include "p_lnspec.h"
 #include "p_effect.h"
@@ -969,18 +970,17 @@ DEFINE_ACTION_FUNCTION(AActor, GiveBody)
 //
 //============================================================================
 
-bool AActor::CheckLocalView() const
+static bool CheckLocalViewForPlayer(const AActor *self, player_t *p)
 {
-	auto p = Level->GetConsolePlayer();
 	if (p == nullptr)
 	{
 		return false;
 	}
-	if (p->camera == this)
+	if (p->camera == self)
 	{
 		return true;
 	}
-	if (p->mo != this || p->camera == nullptr)
+	if (p->mo != self || p->camera == nullptr)
 	{
 		return false;
 	}
@@ -990,6 +990,20 @@ bool AActor::CheckLocalView() const
 		return true;
 	}
 	return false;
+}
+
+bool AActor::CheckLocalView() const
+{
+	if (SS_Active() && Level->isPrimaryLevel())
+	{
+		// [split-screen] all local players count as the local view
+		for (int i = 0; i < SS_NumLocal; i++)
+		{
+			if (CheckLocalViewForPlayer(this, Level->Players[SS_LocalPlayers[i]])) return true;
+		}
+		return false;
+	}
+	return CheckLocalViewForPlayer(this, Level->GetConsolePlayer());
 }
 
 DEFINE_ACTION_FUNCTION(AActor, CheckLocalView)
@@ -5784,6 +5798,10 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 	if (StatusBar != NULL && (playernum == consoleplayer || StatusBar->GetPlayer() == playernum))
 	{
 		StatusBar->AttachToPlayer (p);
+	}
+	if (SS_IsLocalPlayer(playernum))
+	{
+		SS_AttachStatusBars();	// [split-screen]
 	}
 
 	if (multiplayer)

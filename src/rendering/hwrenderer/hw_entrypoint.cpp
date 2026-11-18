@@ -318,6 +318,82 @@ static void CheckTimer(FRenderState &state, uint64_t ShaderStartTime)
 }
 
 
+//===========================================================================
+//
+// Per-frame setup for the hardware renderer: resets the frame's buffers and
+// renders all canvases and camera textures. Must be called once per frame
+// before rendering any main viewpoint.
+//
+//===========================================================================
+
+static void BeginHWRenderFrame(player_t* player)
+{
+	auto RenderState = screen->RenderState();
+	hw_ClearFakeFlat();
+
+	iter_dlightf = iter_dlight = draw_dlight = draw_dlightf = 0;
+
+	checkBenchActive();
+
+	// reset statistics counters
+	ResetProfilingData();
+
+	// Get this before everything else
+	if (cl_capfps || r_NoInterpolate) r_viewpoint.TicFrac = 1.;
+	else r_viewpoint.TicFrac = I_GetTimeFrac();
+
+	screen->mLights->Clear();
+	screen->mBones->Clear();
+	screen->mViewpoints->Clear();
+
+	// NoInterpolateView should have no bearing on camera textures, but needs to be preserved for the main view below.
+	bool saved_niv = NoInterpolateView;
+	NoInterpolateView = false;
+
+	// Shader start time does not need to be handled per level. Just use the one from the camera to render from.
+	if (player->camera)
+		CheckTimer(*RenderState, player->camera->Level->ShaderStartTime);
+
+	// Draw all canvases that changed
+	for (FCanvas* canvas : AllCanvases)
+	{
+		if (canvas->Tex && canvas->Tex->CheckNeedsUpdate())
+		{
+			screen->RenderTextureView(canvas->Tex, [=](IntRect& bounds)
+				{
+					screen->SetViewportRects(&bounds);
+					Draw2D(&canvas->Drawer, *screen->RenderState(), 0, 0, canvas->Tex->GetWidth(), canvas->Tex->GetHeight());
+					canvas->Drawer.Clear();
+				});
+			canvas->Tex->SetUpdated(true);
+		}
+	}
+
+	// prepare all camera textures that have been used in the last frame.
+	// This must be done for all levels, not just the primary one!
+	for (auto Level : AllLevels())
+	{
+		Level->canvasTextureInfo.UpdateAll([&](AActor* camera, FCanvasTexture* camtex, double fov)
+			{
+				screen->RenderTextureView(camtex, [=](IntRect& bounds)
+					{
+						FRenderViewpoint texvp;
+						float ratio = camtex->aspectRatio / Level->info->pixelstretch;
+						RenderViewpoint(texvp, camera, &bounds, fov, ratio, ratio, false, false);
+					});
+			});
+	}
+	NoInterpolateView = saved_niv;
+
+	screen->ImageTransitionScene(true); // Only relevant for Vulkan.
+}
+
+//===========================================================================
+//
+// Renders the main view
+//
+//===========================================================================
+
 sector_t* RenderView(player_t* player)
 {
 	auto RenderState = screen->RenderState();
@@ -335,61 +411,7 @@ sector_t* RenderView(player_t* player)
 	}
 	else
 	{
-		hw_ClearFakeFlat();
-
-		iter_dlightf = iter_dlight = draw_dlight = draw_dlightf = 0;
-
-		checkBenchActive();
-
-		// reset statistics counters
-		ResetProfilingData();
-
-		// Get this before everything else
-		if (cl_capfps || r_NoInterpolate) r_viewpoint.TicFrac = 1.;
-		else r_viewpoint.TicFrac = I_GetTimeFrac();
-
-		screen->mLights->Clear();
-		screen->mBones->Clear();
-		screen->mViewpoints->Clear();
-
-		// NoInterpolateView should have no bearing on camera textures, but needs to be preserved for the main view below.
-		bool saved_niv = NoInterpolateView;
-		NoInterpolateView = false;
-
-		// Shader start time does not need to be handled per level. Just use the one from the camera to render from.
-		if (player->camera)
-			CheckTimer(*RenderState, player->camera->Level->ShaderStartTime);
-
-		// Draw all canvases that changed
-		for (FCanvas* canvas : AllCanvases)
-		{
-			if (canvas->Tex && canvas->Tex->CheckNeedsUpdate())
-			{
-				screen->RenderTextureView(canvas->Tex, [=](IntRect& bounds)
-					{
-						screen->SetViewportRects(&bounds);
-						Draw2D(&canvas->Drawer, *screen->RenderState(), 0, 0, canvas->Tex->GetWidth(), canvas->Tex->GetHeight());
-						canvas->Drawer.Clear();
-					});
-				canvas->Tex->SetUpdated(true);
-			}
-		}
-
-		// prepare all camera textures that have been used in the last frame.
-		// This must be done for all levels, not just the primary one!
-		for (auto Level : AllLevels())
-		{
-			Level->canvasTextureInfo.UpdateAll([&](AActor* camera, FCanvasTexture* camtex, double fov)
-				{
-					screen->RenderTextureView(camtex, [=](IntRect& bounds)
-						{
-							FRenderViewpoint texvp;
-							float ratio = camtex->aspectRatio / Level->info->pixelstretch;
-							RenderViewpoint(texvp, camera, &bounds, fov, ratio, ratio, false, false);
-						});
-				});
-		}
-		NoInterpolateView = saved_niv;
+		BeginHWRenderFrame(player);
 
 		// now render the main view
 		float fovratio;
@@ -403,11 +425,72 @@ sector_t* RenderView(player_t* player)
 			fovratio = ratio;
 		}
 
-		screen->ImageTransitionScene(true); // Only relevant for Vulkan.
-
 		retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
 	}
 	All.Unclock();
 	return retsec;
+}
+
+//===========================================================================
+//
+// [split-screen] Renders the views of several local players into one frame.
+//
+// 'beginview' is called before each view is rendered. It must make the view's
+// player the current one and set up the view window globals for its part of
+// the screen, and returns the player to render or nullptr to skip the view.
+// 'endview' receives the sector the view was rendered from.
+//
+//===========================================================================
+
+bool RenderSplitViews(int numviews, const std::function<player_t*(int)>& beginview, const std::function<void(int, sector_t*)>& endview)
+{
+	if (!V_IsHardwareRenderer() || numviews <= 0)
+	{
+		return false;
+	}
+
+	auto RenderState = screen->RenderState();
+	RenderState->SetVertexBuffer(screen->mVertexData);
+	screen->mVertexData->Reset();
+	hw_postprocess.SetTonemapMode(level.info ? level.info->tonemap : ETonemapMode::None);
+
+	bool begun = false;
+	for (int i = 0; i < numviews; i++)
+	{
+		player_t* player = beginview(i);
+		if (player == nullptr || player->camera == nullptr)
+		{
+			endview(i, nullptr);
+			continue;
+		}
+		if (!begun)
+		{
+			BeginHWRenderFrame(player);
+			begun = true;
+		}
+
+		// The views can be a lot wider than the screen (e.g. two players stacked on top of each other).
+		// Up to 16:9 the horizontal FOV gets widened as usual, beyond that the vertical FOV gets reduced
+		// instead so that a very wide view does not turn into an extreme fisheye.
+		float ratio = r_viewwindow.WidescreenRatio;
+		float fovratio;
+		if (ratio > 16.f / 9.f)
+		{
+			fovratio = 1.333333f * ratio / (16.f / 9.f);
+		}
+		else if (ratio >= 1.3f)
+		{
+			fovratio = 1.333333f;
+		}
+		else
+		{
+			fovratio = ratio;
+		}
+
+		sector_t* sec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
+		endview(i, sec);
+	}
+	All.Unclock();
+	return true;
 }
 

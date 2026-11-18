@@ -74,6 +74,7 @@ LISTMENU "MainMenu"
 	IfGame(Doom, Strife, Chex)
 	{
 		PatchItem "M_NGAME", "n", "PlayerclassMenu"
+		TextItem "$SPLITMNU_MAINITEM", "c", "SplitscreenMenu"
 		ifOption(SwapMenu)
 		{
 			PatchItem "M_LOADG", "l", "LoadGameMenu", 0
@@ -96,6 +97,7 @@ LISTMENU "MainMenu"
 	IfGame(Heretic, Hexen)
 	{
 		TextItem "$MNU_NEWGAME", "n", "PlayerclassMenu"
+		TextItem "$SPLITMNU_MAINITEM", "c", "SplitscreenMenu"
 		TextItem "$MNU_OPTIONS", "o", "OptionsMenu"
 		TextItem "$MNU_GAMEFILES", "g", "GameFilesMenu"
 		TextItem "$MNU_INFO", "i", "ReadThisMenu"
@@ -127,6 +129,7 @@ LISTMENU "MainMenuTextOnly"
 	}
 	
 	TextItem "$MNU_NEWGAME", "n", "PlayerclassMenu"
+	TextItem "$SPLITMNU_MAINITEM", "c", "SplitscreenMenu"
 	TextItem "$MNU_OPTIONS", "o", "OptionsMenu"
 	TextItem "$MNU_LOADGAME", "l", "LoadGameMenu"
 	TextItem "$MNU_SAVEGAME", "s", "SaveGameMenu"
@@ -351,6 +354,52 @@ DefaultOptionMenu
 	{
 		Position -13
 	}
+}
+
+//-------------------------------------------------------------------------------------------
+//
+// Split-screen co-op
+//
+//-------------------------------------------------------------------------------------------
+
+OptionValue "SplitscreenPlayers"
+{
+	2, "2"
+	3, "3"
+	4, "4"
+}
+
+OptionValue "SplitscreenLayouts"
+{
+	0, "$SPLITMNU_STACKED"
+	1, "$SPLITMNU_SIDEBYSIDE"
+}
+
+OptionValue "SplitscreenHudScale"
+{
+	0, "$SPLITMNU_AUTO"
+	1, "1"
+	2, "2"
+	3, "3"
+	4, "4"
+}
+
+OptionMenu "SplitscreenMenu" protected
+{
+	Title "$SPLITMNU_TITLE"
+	Option "$SPLITMNU_PLAYERS",		"splitscreen_players", "SplitscreenPlayers"
+	Option "$SPLITMNU_LAYOUT",		"splitscreen_layout", "SplitscreenLayouts"
+	Option "$SPLITMNU_DIVIDERS",	"splitscreen_dividers", "OnOff"
+	Option "$SPLITMNU_HUDSCALE",	"splitscreen_hudscale", "SplitscreenHudScale"
+	StaticText " "
+	Command "$SPLITMNU_PAIR",		"splitscreen_pair"
+	StaticText " "
+	Command "$SPLITMNU_START",		"splitscreen_newgame"
+	StaticText " "
+	StaticText "$SPLITMNU_HELP1", 1
+	StaticText "$SPLITMNU_HELP2", 1
+	StaticText "$SPLITMNU_HELP4", 1
+	StaticText "$SPLITMNU_HELP3", 1
 }
 
 OptionMenu "OptionsMenu" protected

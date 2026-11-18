@@ -36,6 +36,7 @@
 
 #include "d_main.h"
 #include "g_level.h"
+#include "g_splitscreen.h"
 #include "g_game.h"
 #include "s_sound.h"
 #include "d_event.h"
@@ -475,6 +476,7 @@ void G_NewInit ()
 	primaryLevel->Thinkers.DestroyThinkersInList(STAT_TRAVELLING);
 
 	G_ClearSnapshots ();
+	SS_Shutdown ();		// [split-screen]
 	netgame = false;
 	multiplayer = multiplayernext;
 	multiplayernext = false;
@@ -511,8 +513,13 @@ void G_NewInit ()
 
 void G_DoNewGame (void)
 {
+	int splitplayers = SS_ConsumePendingNewGame();	// [split-screen]
 	G_NewInit ();
 	playeringame[consoleplayer] = 1;
+	if (splitplayers > 1)
+	{
+		SS_SetupGame(splitplayers);
+	}
 	if (d_skill != -1)
 	{
 		gameskill = d_skill;
@@ -1516,6 +1523,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	}
 
 	StatusBar->AttachToPlayer (&players[consoleplayer]);
+	SS_AttachStatusBars();	// [split-screen]
 	//      unsafe world load
 	staticEventManager.WorldLoaded();
 	//      regular world load (savegames are handled internally)

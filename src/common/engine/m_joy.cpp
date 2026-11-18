@@ -68,6 +68,10 @@ CUSTOM_CVARD(Bool, use_joystick, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOIN
 #endif
 }
 
+// PUBLIC DATA DEFINITIONS -------------------------------------------------
+
+bool (*Joy_AcceptDevice)(int device) = nullptr;	// [split-screen]
+
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
 // Bits 0 is X+, 1 is X-, 2 is Y+, and 3 is Y-.

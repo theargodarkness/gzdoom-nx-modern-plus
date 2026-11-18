@@ -49,6 +49,7 @@
 
 static void I_CheckGUICapture ();
 static void I_CheckNativeMouse ();
+int I_JoystickDeviceFromInstance(int instance);
 
 bool GUICapture;
 static bool NativeMouse = true;
@@ -479,11 +480,19 @@ void MessagePump (const SDL_Event &sev)
 
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:
+	{
+		// [split-screen] remember which controller pressed the button
+		int device = I_JoystickDeviceFromInstance(sev.jbutton.which);
 		event.type = sev.type == SDL_JOYBUTTONDOWN ? EV_KeyDown : EV_KeyUp;
 		event.data1 = JoystickMapButton(sev.jbutton.button);
 		if(event.data1 != 0)
+		{
+			D_PostEventSource = device;
 			D_PostEvent(&event);
+			D_PostEventSource = -1;
+		}
 		break;
+	}
 	}
 }
 

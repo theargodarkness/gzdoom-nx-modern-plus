@@ -60,6 +60,7 @@
 #include "d_main.h"
 #include "i_system.h"
 #include "doommenu.h"
+#include "g_splitscreen.h"
 #include "r_utility.h"
 #include "gameconfigfile.h"
 #include "d_player.h"
@@ -183,6 +184,12 @@ bool M_SetSpecialMenu(FName& menu, int param)
 			}
 		}
 		break;
+	case NAME_Playerclassmenu:
+		// [split-screen] Starting a new game from anywhere but the split-screen menu makes it a normal game.
+		// (The split-screen menu's start command requests the split-screen game right after this.)
+		SS_RequestNewGame(0);
+		break;
+
 	case NAME_Episodemenu:
 		// sent from the player class menu
 		NewGameStartupInfo.Skill = -1;
@@ -1031,6 +1038,7 @@ void M_CreateGameMenus()
 	BuildPlayerclassMenu();
 	InitCrosshairsList();
 	InitKeySections();
+	SS_InjectMenuEntries();
 
 	auto opt = OptionValues.CheckKey(NAME_PlayerTeam);
 	if (opt != nullptr)

@@ -95,8 +95,14 @@ const char *KeyNames[NUM_KEYS] =
 	"Mouse1",	"Mouse2",	"Mouse3",	"Mouse4",		// 8 mouse buttons
 	"Mouse5",	"Mouse6",	"Mouse7",	"Mouse8",
 
+#ifdef __SWITCH__
+	// [split-screen] buttons of a single Joy-Con held sideways, named by position
+	"JC_Right",	"JC_Down",	"JC_Up",	"JC_Left",
+	"JC_SL",	"JC_SR",	"JC_Stick",	"JC_Menu",
+#else
 	"Joy1",		"Joy2",		"Joy3",		"Joy4",			// 128 joystick buttons!
 	"Joy5",		"Joy6",		"Joy7",		"Joy8",
+#endif
 	"Joy9",		"Joy10",	"Joy11",	"Joy12",
 	"Joy13",	"Joy14",	"Joy15",	"Joy16",
 	"Joy17",	"Joy18",	"Joy19",	"Joy20",
@@ -728,6 +734,26 @@ void ReadBindings(int lump, bool override)
 //
 //=============================================================================
 
+#ifdef __SWITCH__
+//=============================================================================
+//
+// [split-screen] Default bindings for single Joy-Cons held sideways.
+// Also applied to configs from before these buttons existed: if none of them
+// is bound to anything, they get the defaults.
+//
+//=============================================================================
+
+void C_SetDefaultJoyConKeys()
+{
+	for (int key = KEY_JOY1; key <= KEY_JOY8; key++)
+	{
+		if (Bindings.GetBinding(key).IsNotEmpty()) return;
+	}
+	auto lump = fileSystem.CheckNumForFullName("engine/joyconbinds.txt");
+	if (lump >= 0) ReadBindings(lump, true);
+}
+#endif
+
 void C_SetDefaultKeys(const char* baseconfig)
 {
 	auto lump = fileSystem.CheckNumForFullName("engine/commonbinds.txt");
@@ -743,6 +769,9 @@ void C_SetDefaultKeys(const char* baseconfig)
 
 		ReadBindings(lump, true);
 	}
+#ifdef __SWITCH__
+	C_SetDefaultJoyConKeys();
+#endif
 	int lastlump = 0;
 
 	while ((lump = fileSystem.FindLumpFullName(baseconfig, &lastlump)) != -1)

@@ -134,7 +134,15 @@ void ButtonMap::ResetButtonTriggers ()
 
 void ButtonMap::ResetButtonStates ()
 {
-	for (auto &btn : Buttons)
+	ResetStates(Buttons);
+	if (OnResetButtonStates) OnResetButtonStates();
+}
+
+void (*ButtonMap::OnResetButtonStates)() = nullptr;
+
+void ButtonMap::ResetStates (TArray<FButtonStatus>& states)
+{
+	for (auto &btn : states)
 	{
 		if (!btn.bReleaseLock) 
 		{

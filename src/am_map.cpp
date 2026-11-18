@@ -62,6 +62,7 @@
 #include "gstrings.h"
 
 #include "am_map.h"
+#include "g_splitscreen.h"
 #include "po_man.h"
 #include "a_keys.h"
 #include "g_levellocals.h"
@@ -260,6 +261,10 @@ CCMD(am_gobig)
 
 CCMD(togglemap)
 {
+	if (SS_ToggleAutomap())
+	{
+		return;	// [split-screen] toggled for this player only
+	}
 	if (gameaction == ga_nothing)
 	{
 		gameaction = ga_togglemap;
@@ -3446,6 +3451,37 @@ void AM_Stop()
 {
 	automapactive = false;
 	viewactive = true;
+}
+
+//=============================================================================
+//
+// [split-screen] Each local player can have the automap up in its own part of
+// the screen. All of them share the one automap object, which follows
+// whichever player is being drawn.
+//
+//=============================================================================
+
+bool AM_SplitAllowed()
+{
+	return gamestate == GS_LEVEL && !(dmflags2 & DF2_NO_AUTOMAP) && primaryLevel && primaryLevel->automap;
+}
+
+void AM_DrawSplit(int bottom, bool start)
+{
+	if (!AM_SplitAllowed())
+		return;
+
+	bool savedactive = automapactive;
+	bool savedview = viewactive;
+	automapactive = true;
+	viewactive = false;
+	if (start)
+	{
+		primaryLevel->automap->startDisplay();
+	}
+	primaryLevel->automap->Drawer(bottom);
+	automapactive = savedactive;
+	viewactive = savedview;
 }
 
 //=============================================================================

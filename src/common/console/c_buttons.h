@@ -82,6 +82,22 @@ public:
 	{
 		Buttons[x].Reset();
 	}
+
+	// [split-screen] Save/restore the complete button state so several local
+	// players can each have their own set of pressed buttons.
+	void GetStates(TArray<FButtonStatus>& out) const
+	{
+		if (out.Size() != Buttons.Size()) out = Buttons;
+		else for (unsigned i = 0; i < Buttons.Size(); i++) out[i] = Buttons[i];
+	}
+	void SetStates(const TArray<FButtonStatus>& in)
+	{
+		if (in.Size() == Buttons.Size())
+			for (unsigned i = 0; i < Buttons.Size(); i++) Buttons[i] = in[i];
+	}
+	static void ResetStates(TArray<FButtonStatus>& states);
+	// Called by ResetButtonStates so stored states of other local players can be cleared as well.
+	static void (*OnResetButtonStates)();
 };
 
 extern ButtonMap buttonMap;

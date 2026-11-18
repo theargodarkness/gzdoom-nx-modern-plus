@@ -37,6 +37,7 @@
 #include "c_console.h"
 #include "d_netinf.h"
 #include "d_net.h"
+#include "g_splitscreen.h"
 #include "cmdlib.h"
 #include "m_cheat.h"
 #include "p_local.h"
@@ -336,7 +337,27 @@ static struct TicSpecial
 		return *this;
 	}
 
-} specials;
+} specials, ss_specials[SS_MAXLOCALPLAYERS - 1];	// [split-screen] one stream per extra local player
+
+// [split-screen] Special commands go to the stream of the local player whose input is being processed.
+static inline TicSpecial &LocalSpecials()
+{
+	return (SS_ActiveSlot > 0 && SS_ActiveSlot < SS_MAXLOCALPLAYERS) ? ss_specials[SS_ActiveSlot - 1] : specials;
+}
+
+// [split-screen] Returns the special commands an extra local player generated for the given tic.
+uint8_t *Net_GetLocalSlotSpecials(int slot, int tic, int *len)
+{
+	if (slot <= 0 || slot >= SS_MAXLOCALPLAYERS)
+	{
+		*len = 0;
+		return nullptr;
+	}
+	TicSpecial &spec = ss_specials[slot - 1];
+	int index = tic % BACKUPTICS;
+	*len = (int)spec.used[index];
+	return spec.streams[index];
+}
 
 void Net_ClearBuffers ()
 {
@@ -1005,11 +1026,19 @@ void NetUpdate (void)
 		
 		//Printf ("mk:%i ",maketic);
 		G_BuildTiccmd (&localcmds[maketic % LOCALCMDTICS]);
+		if (SS_Active())
+		{
+			SS_BuildTiccmds ();		// [split-screen] the other local players
+		}
 		maketic++;
 
 		if (ticdup == 1 || maketic == 0)
 		{
 			Net_NewMakeTic ();
+			if (SS_Active())
+			{
+				SS_CommitTic (maketic - 1);
+			}
 		}
 		else
 		{
@@ -2075,47 +2104,52 @@ void Net_CheckLastReceived (int counts)
 void Net_NewMakeTic (void)
 {
 	specials.NewMakeTic ();
+	for (auto &spec : ss_specials)
+	{
+		spec.NewMakeTic ();
+	}
 }
 
 void Net_WriteInt8 (uint8_t it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteInt16 (int16_t it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteInt32 (int32_t it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteInt64(int64_t it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteFloat (float it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteDouble(double it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteString (const char *it)
 {
-	specials << it;
+	LocalSpecials() << it;
 }
 
 void Net_WriteBytes (const uint8_t *block, int len)
 {
+	TicSpecial &spec = LocalSpecials();
 	while (len--)
-		specials << *block++;
+		spec << *block++;
 }
 
 //==========================================================================

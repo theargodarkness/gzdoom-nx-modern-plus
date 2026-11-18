@@ -55,6 +55,7 @@
 #include "gstrings.h"
 #include "r_sky.h"
 #include "g_game.h"
+#include "g_splitscreen.h"
 #include "sbar.h"
 #include "m_png.h"
 #include "a_keys.h"
@@ -986,6 +987,10 @@ CCMD (spycancel)
 //
 bool G_Responder (event_t *ev)
 {
+	// [split-screen] Controller input of the other local players is processed in their own context.
+	if (SS_Responder(ev))
+		return true;
+
 	// check events
 	if (ev->type != EV_Mouse && primaryLevel->localEventManager->Responder(ev)) // [ZZ] ZScript ate the event // update 07.03.17: mouse events are handled directly
 		return true;
@@ -2168,6 +2173,9 @@ void G_DoLoadGame ()
 	resfile.reset(nullptr);	// we no longer need the resource file below this point
 	G_ReadVisited(arc);
 
+	// [split-screen] restore the local players before the level gets loaded
+	SS_SerializeGlobals(arc);
+
 	// load a base level
 	bool demoplaybacksave = demoplayback;
 	G_InitNew(map.GetChars(), false);
@@ -2453,6 +2461,7 @@ void G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, c
 					("laststartpos", laststartpos);
 
 	STAT_Serialize(savegameglobals);
+	SS_SerializeGlobals(savegameglobals);	// [split-screen]
 	FRandom::StaticWriteRNGState(savegameglobals);
 	P_WriteACSDefereds(savegameglobals);
 	P_WriteACSVars(savegameglobals);
@@ -2916,6 +2925,7 @@ void G_DoPlayDemo (void)
 	int demolump;
 
 	gameaction = ga_nothing;
+	SS_Shutdown();	// [split-screen] demos play back in a single view
 
 	// [RH] Allow for demos not loaded as lumps
 	demolump = fileSystem.CheckNumForFullName (defdemoname.GetChars(), true);

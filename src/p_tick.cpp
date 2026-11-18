@@ -25,6 +25,7 @@
 //-----------------------------------------------------------------------------
 
 #include "p_local.h"
+#include "g_splitscreen.h"
 #include "p_effect.h"
 #include "c_console.h"
 #include "b_bot.h"
@@ -188,4 +189,5 @@ void P_Ticker (void)
 		primaryLevel->avg_velocity += (players[consoleplayer].mo->Vel.Length() - primaryLevel->avg_velocity) / primaryLevel->maptime;
 	}
 	StatusBar->CallTick();		// Status bar should tick AFTER the thinkers to properly reflect the level's state at this time.
+	SS_TickStatusBars();		// [split-screen] the other local players' status bars
 }
