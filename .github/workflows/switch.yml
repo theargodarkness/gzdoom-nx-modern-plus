@@ -20,11 +20,14 @@ jobs:
       matrix:
         include:
           # devkitPro's own packages: OpenGL / GLES renderers.
-          # The Vulkan renderer needs the Mesa NVK driver library for Horizon in portlibs,
-          # which devkitPro does not package; build it with HAVE_VULKAN=ON where that exists.
           - name: gzdoom-switch-opengl
             image: devkitpro/devkita64:latest
             vulkan: 'OFF'
+          # Vulkan renderer, linked against the NVK driver that the
+          # "Switch Vulkan driver (NVK)" workflow builds and caches.
+          - name: gzdoom-switch-vulkan
+            image: devkitpro/devkita64:latest
+            vulkan: 'ON'
     steps:
       - name: Install host build tools
         run: |
@@ -39,12 +42,37 @@ jobs:
           gcc --version | head -n 1
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc --version | head -n 1
 
+      - name: Read pinned Mesa commit
+        id: pin
+        if: matrix.vulkan == 'ON'
+        run: echo "commit=$(tr -d '[:space:]' < nx/mesa-switch.commit)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Vulkan driver
+        id: nvk
+        if: matrix.vulkan == 'ON'
+        uses: actions/cache/restore@v4
+        with:
+          path: nvk-sdk
+          key: nvk-sdk-${{ steps.pin.outputs.commit }}-${{ hashFiles('nx/build-nvk.sh') }}
+
+      - name: Install the Vulkan driver
+        if: matrix.vulkan == 'ON' && steps.nvk.outputs.cache-hit == 'true'
+        run: |
+          cp -a nvk-sdk/. /opt/devkitpro/portlibs/switch/
+          ls -la /opt/devkitpro/portlibs/switch/lib/libvulkan.a
+
+      - name: No Vulkan driver yet
+        if: matrix.vulkan == 'ON' && steps.nvk.outputs.cache-hit != 'true'
+        run: echo "::warning::No cached NVK driver for this recipe. Run the 'Switch Vulkan driver (NVK)' workflow, then re-run this one."
+
       - name: Build
+        if: matrix.vulkan != 'ON' || steps.nvk.outputs.cache-hit == 'true'
         env:
           HAVE_VULKAN: ${{ matrix.vulkan }}
         run: bash nx/build-switch.sh
 
       - uses: actions/upload-artifact@v4
+        if: matrix.vulkan != 'ON' || steps.nvk.outputs.cache-hit == 'true'
         with:
           name: ${{ matrix.name }}
           path: build-switch/dist
