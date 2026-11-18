@@ -397,11 +397,18 @@ void ST_CreateStatusBar(bool bTitleLevel)
 //
 //---------------------------------------------------------------------------
 
+void SBarInfo_BeginPrivate(int playernum, SBarInfo *saved[2]);
+void SBarInfo_EndPrivate(SBarInfo *saved[2]);
+
 DBaseStatusBar *ST_CreateExtraStatusBar(int playernum)
 {
 	auto saved = StatusBar;
 	StatusBar = nullptr;
+	// SBARINFO scripts hold the values they display, so this bar needs scripts of its own.
+	SBarInfo *savedscripts[2];
+	SBarInfo_BeginPrivate(playernum, savedscripts);
 	ST_CreateStatusBarObject(false, playernum);
+	SBarInfo_EndPrivate(savedscripts);
 	auto bar = StatusBar;
 	StatusBar = saved;
 	return bar;

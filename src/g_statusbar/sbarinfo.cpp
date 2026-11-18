@@ -429,8 +429,55 @@ static const char *StatusBars[] =
 	NULL
 };
 
+// [split-screen] The parsed script is not just a description: its commands keep the values
+// they show (health, ammo, animation state) between Tick and Draw. Status bars sharing one
+// script would therefore all show the player that was ticked last, so every additional
+// local player's bar gets its own copy of the scripts.
+static SBarInfo *PrivateScripts[MAXPLAYERS][2];
+static bool QuietLoad;
+
+static void FreePrivateScripts(int playernum)
+{
+	for (auto &script : PrivateScripts[playernum])
+	{
+		delete script;
+		script = nullptr;
+	}
+}
+
+// Loads a private copy of the scripts for this player and makes it the current one.
+// The previous scripts are returned in 'saved' and must be put back with SBarInfo_EndPrivate.
+void SBarInfo_BeginPrivate(int playernum, SBarInfo *saved[2])
+{
+	FreePrivateScripts(playernum);
+	for (int i = 0; i < 2; i++)
+	{
+		saved[i] = SBarInfoScript[i];
+		SBarInfoScript[i] = nullptr;
+	}
+	QuietLoad = true;
+	SBarInfo::Load();
+	QuietLoad = false;
+	for (int i = 0; i < 2; i++)
+	{
+		PrivateScripts[playernum][i] = SBarInfoScript[i];
+	}
+}
+
+void SBarInfo_EndPrivate(SBarInfo *saved[2])
+{
+	for (int i = 0; i < 2; i++)
+	{
+		SBarInfoScript[i] = saved[i];
+	}
+}
+
 void FreeSBarInfoScript()
 {
+	for (int i = 0; i < MAXPLAYERS; i++)
+	{
+		FreePrivateScripts(i);
+	}
 	for(int i = 0;i < 2;i++)
 	{
 		if (SBarInfoScript[i] != NULL)
@@ -448,7 +495,7 @@ void SBarInfo::Load()
 		int lump = fileSystem.CheckNumForFullName(gameinfo.statusbar.GetChars(), true);
 		if(lump != -1)
 		{
-			if (!batchrun) Printf ("ParseSBarInfo: Loading default status bar definition.\n");
+			if (!batchrun && !QuietLoad) Printf ("ParseSBarInfo: Loading default status bar definition.\n");
 			if(SBarInfoScript[SCRIPT_DEFAULT] == NULL)
 				SBarInfoScript[SCRIPT_DEFAULT] = new SBarInfo(lump);
 			else
@@ -458,7 +505,7 @@ void SBarInfo::Load()
 
 	if(fileSystem.CheckNumForName("SBARINFO") != -1)
 	{
-		if (!batchrun) Printf ("ParseSBarInfo: Loading custom status bar definition.\n");
+		if (!batchrun && !QuietLoad) Printf ("ParseSBarInfo: Loading custom status bar definition.\n");
 		int lastlump, lump;
 		lastlump = 0;
 		while((lump = fileSystem.FindLump("SBARINFO", &lastlump)) != -1)
