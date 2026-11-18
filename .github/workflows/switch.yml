@@ -59,7 +59,13 @@ jobs:
         if: matrix.vulkan == 'ON' && steps.nvk.outputs.cache-hit == 'true'
         run: |
           cp -a nvk-sdk/. /opt/devkitpro/portlibs/switch/
-          ls -la /opt/devkitpro/portlibs/switch/lib/libvulkan.a
+          lib=/opt/devkitpro/portlibs/switch/lib/libvulkan.a
+          # The driver's merge step indexes the archive with the host's ar, which skips the
+          # Rust standard library objects in it. Rebuild the index with the Switch toolchain.
+          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ranlib "$lib"
+          ls -la "$lib"
+          echo "members: $(/opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar t "$lib" | wc -l)"
+          echo "Rust core symbols defined: $(/opt/devkitpro/devkitA64/bin/aarch64-none-elf-nm -C --defined-only "$lib" 2>/dev/null | grep -c 'core::panicking' || true)"
 
       - name: No Vulkan driver yet
         if: matrix.vulkan == 'ON' && steps.nvk.outputs.cache-hit != 'true'
