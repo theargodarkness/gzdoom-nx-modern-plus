@@ -1,15 +1,10 @@
 name: Switch Vulkan driver (NVK)
 
 # Builds Mesa's NVK Vulkan driver for Horizon from source and caches the result
-# for the Switch build. Runs when the pinned Mesa commit or the build recipe
-# changes, or by hand.
+# for the Switch build. Run by hand; the Vulkan variant of the Switch build is
+# currently switched off.
 
 on:
-  push:
-    paths:
-      - nx/build-nvk.sh
-      - nx/mesa-switch.commit
-      - .github/workflows/nvk.yml
   workflow_dispatch:
 
 concurrency:
