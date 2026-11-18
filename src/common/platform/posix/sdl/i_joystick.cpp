@@ -766,13 +766,25 @@ void I_GetJoysticks(TArray<IJoystickConfig *> &sticks)
 		JoystickManager->GetDevices(sticks);
 }
 
+// On the Switch the controllers are the only way to play or to use the menus, so they
+// are always read. (use_joystick is off by default, and with a fresh config nothing would
+// respond, the option to turn it on included.)
+static inline bool JoystickEnabled()
+{
+#ifdef __SWITCH__
+	return true;
+#else
+	return use_joystick;
+#endif
+}
+
 void I_GetAxes(float axes[NUM_JOYAXIS])
 {
 	for (int i = 0; i < NUM_JOYAXIS; ++i)
 	{
 		axes[i] = 0;
 	}
-	if (use_joystick && JoystickManager)
+	if (JoystickEnabled() && JoystickManager)
 	{
 		JoystickManager->AddAxes(axes);
 	}
@@ -780,7 +792,7 @@ void I_GetAxes(float axes[NUM_JOYAXIS])
 
 void I_ProcessJoysticks()
 {
-	if (use_joystick && JoystickManager)
+	if (JoystickEnabled() && JoystickManager)
 		JoystickManager->ProcessInput();
 }
 

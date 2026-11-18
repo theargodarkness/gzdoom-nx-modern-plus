@@ -119,7 +119,23 @@ FString M_GetAutoexecPath()
 
 FString M_GetConfigPath(bool for_reading)
 {
-	return GetUserFile(GAMENAMELOWERCASE ".ini");
+	FString path = GetUserFile(GAMENAMELOWERCASE ".ini");
+	// First run: start from the Switch defaults shipped next to the game, if there are any.
+	FString defaults = path + ".default";
+	if (!FileExists(path.GetChars()) && FileExists(defaults.GetChars()))
+	{
+		FILE *in = fopen(defaults.GetChars(), "rb");
+		FILE *out = in ? fopen(path.GetChars(), "wb") : nullptr;
+		if (in && out)
+		{
+			char buf[4096];
+			size_t n;
+			while ((n = fread(buf, 1, sizeof(buf), in)) > 0) fwrite(buf, 1, n, out);
+		}
+		if (in) fclose(in);
+		if (out) fclose(out);
+	}
+	return path;
 }
 
 //===========================================================================
