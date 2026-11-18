@@ -151,6 +151,9 @@ public:
 	int mGameScreenHeight = 0;
 	IntRect mScreenViewport;
 	IntRect mSceneViewport;
+	// [split-screen] Several scene views are rendered into one frame, each into its own part
+	// of the screen (mSceneViewport). Whole-screen copies must then be limited to that part.
+	bool mSplitSceneView = false;
 	IntRect mOutputLetterbox;
 	float mSceneClearColor[4]{ 0,0,0,255 };
 

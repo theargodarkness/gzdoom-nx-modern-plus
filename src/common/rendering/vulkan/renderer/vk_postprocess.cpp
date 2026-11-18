@@ -88,24 +88,39 @@ void VkPostprocess::BlitSceneToPostprocess()
 
 	VkImageTransition()
 		.AddImage(&buffers->SceneColor, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, false)
-		.AddImage(&buffers->PipelineImage[mCurrentPipelineImage], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, true)
+		// In a split-screen frame the image already holds the earlier views and must be kept.
+		.AddImage(&buffers->PipelineImage[mCurrentPipelineImage], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, !fb->mSplitSceneView)
 		.Execute(fb->GetCommands()->GetDrawCommands());
+
+	auto sceneColor = buffers->SceneColor.Image.get();
+
+	// Normally the whole scene image is copied. In a split-screen frame only the part the
+	// current view was rendered into is, so the views (and weapons) copied before it stay.
+	int x0 = 0, y0 = 0, x1 = sceneColor->width, y1 = sceneColor->height;
+	if (fb->mSplitSceneView)
+	{
+		const auto &vp = fb->mSceneViewport;
+		x0 = clamp(vp.left, 0, sceneColor->width);
+		y0 = clamp(vp.top, 0, sceneColor->height);
+		x1 = clamp(vp.left + vp.width, 0, sceneColor->width);
+		y1 = clamp(vp.top + vp.height, 0, sceneColor->height);
+		if (x1 <= x0 || y1 <= y0) return;
+	}
 
 	if (buffers->GetSceneSamples() != VK_SAMPLE_COUNT_1_BIT)
 	{
-		auto sceneColor = buffers->SceneColor.Image.get();
 		VkImageResolve resolve = {};
-		resolve.srcOffset = { 0, 0, 0 };
+		resolve.srcOffset = { x0, y0, 0 };
 		resolve.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		resolve.srcSubresource.mipLevel = 0;
 		resolve.srcSubresource.baseArrayLayer = 0;
 		resolve.srcSubresource.layerCount = 1;
-		resolve.dstOffset = { 0, 0, 0 };
+		resolve.dstOffset = { x0, y0, 0 };
 		resolve.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		resolve.dstSubresource.mipLevel = 0;
 		resolve.dstSubresource.baseArrayLayer = 0;
 		resolve.dstSubresource.layerCount = 1;
-		resolve.extent = { (uint32_t)sceneColor->width, (uint32_t)sceneColor->height, 1 };
+		resolve.extent = { (uint32_t)(x1 - x0), (uint32_t)(y1 - y0), 1 };
 		cmdbuffer->resolveImage(
 			sceneColor->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			buffers->PipelineImage[mCurrentPipelineImage].Image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -113,16 +128,15 @@ void VkPostprocess::BlitSceneToPostprocess()
 	}
 	else
 	{
-		auto sceneColor = buffers->SceneColor.Image.get();
 		VkImageBlit blit = {};
-		blit.srcOffsets[0] = { 0, 0, 0 };
-		blit.srcOffsets[1] = { sceneColor->width, sceneColor->height, 1 };
+		blit.srcOffsets[0] = { x0, y0, 0 };
+		blit.srcOffsets[1] = { x1, y1, 1 };
 		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.srcSubresource.mipLevel = 0;
 		blit.srcSubresource.baseArrayLayer = 0;
 		blit.srcSubresource.layerCount = 1;
-		blit.dstOffsets[0] = { 0, 0, 0 };
-		blit.dstOffsets[1] = { sceneColor->width, sceneColor->height, 1 };
+		blit.dstOffsets[0] = { x0, y0, 0 };
+		blit.dstOffsets[1] = { x1, y1, 1 };
 		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.dstSubresource.mipLevel = 0;
 		blit.dstSubresource.baseArrayLayer = 0;

@@ -134,7 +134,23 @@ void VkRenderState::EnableClipDistance(int num, bool state)
 
 void VkRenderState::Clear(int targets)
 {
-	mClearTargets = targets;
+	if (mScissorWidth >= 0)
+	{
+		// [split-screen] A clear with a scissor set only clears that part of the target.
+		// The render pass' own clear always covers the whole target, which would wipe the
+		// views already drawn this frame, so clear the rectangle once the pass has begun.
+		mClearTargets = 0;
+		mRectClearTargets = targets;
+		mRectClearX = mScissorX;
+		mRectClearY = mScissorY;
+		mRectClearWidth = mScissorWidth;
+		mRectClearHeight = mScissorHeight;
+	}
+	else
+	{
+		mClearTargets = targets;
+		mRectClearTargets = 0;
+	}
 	EndRenderPass();
 }
 
@@ -573,6 +589,52 @@ void VkRenderState::BeginRenderPass(VulkanCommandBuffer *cmdbuffer)
 		beginInfo.AddClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	beginInfo.AddClearDepthStencil(1.0f, 0);
 	beginInfo.Execute(cmdbuffer);
+
+	if (mRectClearTargets != 0)
+	{
+		int x0 = clamp(mRectClearX, 0, mRenderTarget.Width);
+		int y0 = clamp(mRectClearY, 0, mRenderTarget.Height);
+		int x1 = clamp(mRectClearX + mRectClearWidth, 0, mRenderTarget.Width);
+		int y1 = clamp(mRectClearY + mRectClearHeight, 0, mRenderTarget.Height);
+		if (x1 > x0 && y1 > y0)
+		{
+			VkClearAttachment attachments[4] = {};
+			uint32_t count = 0;
+			if (mRectClearTargets & CT_Color)
+			{
+				for (int i = 0; i < key.DrawBuffers; i++)
+				{
+					auto &a = attachments[count++];
+					a.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					a.colorAttachment = i;
+					if (i == 0)
+					{
+						for (int c = 0; c < 4; c++) a.clearValue.color.float32[c] = screen->mSceneClearColor[c];
+					}
+				}
+			}
+			if (mRenderTarget.DepthStencil && (mRectClearTargets & (CT_Depth | CT_Stencil)))
+			{
+				auto &a = attachments[count++];
+				if (mRectClearTargets & CT_Depth) a.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+				if (mRectClearTargets & CT_Stencil) a.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+				a.clearValue.depthStencil.depth = 1.0f;
+				a.clearValue.depthStencil.stencil = 0;
+			}
+			if (count > 0)
+			{
+				VkClearRect rect = {};
+				rect.rect.offset.x = x0;
+				rect.rect.offset.y = y0;
+				rect.rect.extent.width = x1 - x0;
+				rect.rect.extent.height = y1 - y0;
+				rect.baseArrayLayer = 0;
+				rect.layerCount = 1;
+				cmdbuffer->clearAttachments(count, attachments, 1, &rect);
+			}
+		}
+		mRectClearTargets = 0;
+	}
 
 	mMaterial.mChanged = true;
 	mClearTargets = 0;

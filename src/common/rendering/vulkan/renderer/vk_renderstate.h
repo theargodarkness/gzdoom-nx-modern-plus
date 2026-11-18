@@ -74,6 +74,8 @@ protected:
 	VkPipelineKey mPipelineKey = {};
 	VkRenderPassSetup *mPassSetup = nullptr;
 	int mClearTargets = 0;
+	int mRectClearTargets = 0;	// [split-screen] pending clear of only a part of the target
+	int mRectClearX = 0, mRectClearY = 0, mRectClearWidth = 0, mRectClearHeight = 0;
 	bool mNeedApply = true;
 
 	int mScissorX = 0, mScissorY = 0, mScissorWidth = -1, mScissorHeight = -1;

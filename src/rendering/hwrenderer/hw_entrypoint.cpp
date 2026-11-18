@@ -455,6 +455,7 @@ bool RenderSplitViews(int numviews, const std::function<player_t*(int)>& beginvi
 	hw_postprocess.SetTonemapMode(level.info ? level.info->tonemap : ETonemapMode::None);
 
 	bool begun = false;
+	int rendered = 0;
 	for (int i = 0; i < numviews; i++)
 	{
 		player_t* player = beginview(i);
@@ -487,7 +488,11 @@ bool RenderSplitViews(int numviews, const std::function<player_t*(int)>& beginvi
 			fovratio = ratio;
 		}
 
+		// Every view after the first adds to what is already in the frame.
+		screen->mSplitSceneView = rendered > 0;
 		sector_t* sec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
+		screen->mSplitSceneView = false;
+		rendered++;
 		endview(i, sec);
 	}
 	All.Unclock();
